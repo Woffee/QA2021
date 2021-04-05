@@ -1,0 +1,13 @@
+logs/
+models/
+.idea/
+__pycache__/
+*.log
+ckpt/
+ltr/
+for_ltr/
+tmp/
+.DS_Store
+twitter/
+adwords/
+ebay/
