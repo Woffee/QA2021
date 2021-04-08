@@ -41,8 +41,7 @@ import numpy as np
 import math
 import pytrec_eval
 from sklearn import metrics
-from sklearn.metrics import roc_auc_score
-
+from sklearn.metrics import roc_auc_score, confusion_matrix
 
 def min_max(arr):
     mi = np.min(arr)
@@ -92,8 +91,10 @@ def calc_auc(qrel_file, pred_file):
                 q_pred[qid] = [[did, score]]
             # print("did:",did,", score:", score)
 
-    # auc
+    # auc & accuracy
     auc_list = []
+    accuracy_list = []
+
 
     for qid in q_pred.keys():
         y_true = []
@@ -107,8 +108,22 @@ def calc_auc(qrel_file, pred_file):
 
             y_score.append(score)
 
+        if np.sum(y_true) == 0:
+            accuracy_list.append(0)
+            auc_list.append(0)
+            print("No positive samples in y_true, qid:%s" % qid)
+            continue
+
         y_score = min_max(y_score)
         y_score = np.array(y_score)
+
+        y_pred = []
+        for s in y_score:
+            if s >= 0.5:
+                y_pred.append(1)
+            else:
+                y_pred.append(0)
+
         y_true = np.array(y_true)
 
         # 下面两种方式计算auc结果相同。但方式二能返回更多信息。
@@ -127,12 +142,19 @@ def calc_auc(qrel_file, pred_file):
         # if qid == "1":
         #     pass
 
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        accuracy_list.append(accuracy)
+
     final_auc = np.mean(auc_list)
+    final_accuracy = np.mean(accuracy_list)
     print("=== AUC Evaluation results ===")
     print("Test total:", len(auc_list))
-    print("Prediction file:", pred_file)
+    print("Qrel file:", qrel_file)
+    print("Pred file:", pred_file)
     # print("len(pred.keys):", len(q_pred.keys()))
-    print("auc =", final_auc)
+    print("AUC      =", final_auc)
+    print("Accuracy =", final_accuracy)
 
 
 def main():
@@ -148,6 +170,8 @@ def main():
 
     assert os.path.exists(args.qrel)
     assert os.path.exists(args.run)
+
+    calc_auc(args.qrel, args.run)
 
     with open(args.qrel, 'r') as f_qrel:
         qrel = pytrec_eval.parse_qrel(f_qrel)
@@ -178,17 +202,16 @@ def main():
     #                  with a list of measure names.
     print("==========")
     selected_measures = ['map', 'recip_rank', 'P_5', 'P_10', 'P_15', 'P_20', 'recall_5', 'recall_10', 'recall_15', 'recall_20','ndcg']
+
+    eva_values = {}
     for measure in sorted(query_measures.keys()):
         if measure in selected_measures:
-            print_line(
-                measure,
-                'all',
-                pytrec_eval.compute_aggregated_measure(
-                    measure,
-                    [query_measures[measure]
-                     for query_measures in results.values()]))
+            eva_values[measure] = pytrec_eval.compute_aggregated_measure( measure,
+                    [query_measures[measure] for query_measures in results.values()])
+            # print_line( measure, 'all', eva_values[measure])
+    for measure in selected_measures:
+        print_line( measure, 'all', eva_values[measure])
 
-    calc_auc(args.qrel, args.run)
 
 if __name__ == "__main__":
     sys.exit(main())
