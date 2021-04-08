@@ -17,6 +17,8 @@ from keras.layers.core import Lambda
 from keras.layers import Dot, add, Bidirectional, Dropout, Reshape, Concatenate, Dense, MaxPooling1D, Flatten
 from keras.models import Input, Model
 from keras import backend as K
+from keras.callbacks import ModelCheckpoint
+
 from adding_weight import adding_weight
 
 import keras
@@ -41,6 +43,10 @@ KTF.set_session(session)
 
 import random
 random.seed(10)
+
+def print_log(str):
+    print(str)
+    logging.info(str)
 
 def loss_c(similarity):
     ns_num = len(similarity) - 1
@@ -166,8 +172,6 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
     with open(qa_file, "r", encoding='utf-8') as f:
         lines = f.readlines()
         for i, line in enumerate(lines):
-            if i >= 2000:
-                break
 
             line = line.strip().lower()
             if line != "" and i % 2 == 0:
@@ -235,8 +239,9 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
     total = len(question_vecs)
 
-    # 打乱训练数据
     qa_index = list( range(total) )
+
+    # 打乱训练数据
     # random.shuffle(qa_index)
 
     for i in qa_index:
@@ -272,20 +277,25 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
                              hidden_dim=args.hidden_dim,
                              ns_amount=ns_amount,
                              learning_rate=args.learning_rate,
-                             drop_rate=args.drop_rate)
+                             drop_rate=args.drop_rate,)
     print(model.summary())
 
     print("start training...")
-    logger.info("start training...")
+    logger.info("=== start training...")
+
+    checkpoint = ModelCheckpoint("ckpt/best_model.hdf5", monitor='loss', verbose=1,
+                                 save_best_only=True, mode='auto', period=10)
+
     model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num], weight_data_r[:train_num], weight_data_w[:train_num] ], y_data[:train_num],
               batch_size=args.batch_size,
               epochs=args.epochs,
               verbose=1,
-              validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:])
+              validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:]),
+              callbacks=[checkpoint]
               )
 
     res = model.evaluate([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:], weight_data_r[train_num:], weight_data_w[train_num:] ], y_data[train_num:],verbose=1)
-    print("training over.")
+    print("=== training over.")
     logger.info("training over")
     print(model.metrics_names)
     print(res)
@@ -294,9 +304,11 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
     model.save(to_model_file)
     print("saved model to:", to_model_file)
+    logging.info("saved model to: %s" % to_model_file)
 
     model.save_weights(to_ckpt_file)
-    print("saved weights to:", to_ckpt_file)
+    print("saved weights to: %s" % to_ckpt_file)
+    logging.info("saved weights to: %s" % to_ckpt_file)
 
 
 
