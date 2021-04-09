@@ -46,6 +46,8 @@ from sklearn.metrics import roc_auc_score, confusion_matrix
 def min_max(arr):
     mi = np.min(arr)
     ma = np.max(arr)
+    if mi == ma:
+        return [1] * len(arr)
     res = []
     for x in arr:
         res.append( float(x - mi) / (ma - mi) )
@@ -132,7 +134,10 @@ def calc_auc(qrel_file, pred_file):
         # auc = roc_auc_score(y_true, y_score)
 
         # 方式 2
-        fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
+        try:
+            fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
+        except Exception as e:
+            pass
         auc = metrics.auc(fpr, tpr)
         if math.isnan(auc):
             auc = 0
@@ -155,6 +160,7 @@ def calc_auc(qrel_file, pred_file):
     # print("len(pred.keys):", len(q_pred.keys()))
     print("AUC      =", final_auc)
     print("Accuracy =", final_accuracy)
+    return final_auc, final_accuracy
 
 
 def main():
@@ -171,7 +177,7 @@ def main():
     assert os.path.exists(args.qrel)
     assert os.path.exists(args.run)
 
-    calc_auc(args.qrel, args.run)
+    final_auc, final_accuracy = calc_auc(args.qrel, args.run)
 
     with open(args.qrel, 'r') as f_qrel:
         qrel = pytrec_eval.parse_qrel(f_qrel)
@@ -204,13 +210,19 @@ def main():
     selected_measures = ['map', 'recip_rank', 'P_5', 'P_10', 'P_15', 'P_20', 'recall_5', 'recall_10', 'recall_15', 'recall_20','ndcg']
 
     eva_values = {}
-    for measure in sorted(query_measures.keys()):
-        if measure in selected_measures:
-            eva_values[measure] = pytrec_eval.compute_aggregated_measure( measure,
-                    [query_measures[measure] for query_measures in results.values()])
+    for measure in selected_measures:
+        eva_values[measure] = pytrec_eval.compute_aggregated_measure( measure,
+                [query_measures[measure] for query_measures in results.values()])
             # print_line( measure, 'all', eva_values[measure])
     for measure in selected_measures:
         print_line( measure, 'all', eva_values[measure])
+
+
+    print("%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f" %
+          (final_auc, final_accuracy, eva_values['map'], eva_values['recip_rank'],
+           eva_values['P_5'], eva_values['P_10'], eva_values['P_15'], eva_values['P_20'],
+           eva_values['recall_5'], eva_values['recall_10'], eva_values['recall_15'], eva_values['recall_20'],
+           eva_values['ndcg']))
 
 
 if __name__ == "__main__":
