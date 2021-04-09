@@ -206,7 +206,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
                 output_length = max(len(words), output_length)
                 docs.append(words)
     doc_vecs = []
-    output_length = args.output_length
+    # output_length = args.output_length
     for d_words in docs:
         doc_vecs.append(sentence2vec(w2v_model, d_words, output_length))
     print("len(doc_vecs)",len(doc_vecs))
