@@ -143,7 +143,7 @@ def sentence2vec(w2v_model, s, max_length):
             vec.append(w2v_model.wv[word])
     dim = len(vec[0])
     # print("dim", dim)
-    print("len(vec)",len(vec))
+    # print("len(vec)",len(vec))
     for i in range(max_length - len(vec)):
         vec.append( np.zeros(dim) )
     return np.array(vec)
@@ -161,7 +161,7 @@ def get_randoms(arr, not_in, num=2):
 
 
 def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
-    logger.info("preprocessing...")
+    logger.info("=== preprocessing...")
     ns_amount = args.ns_amount
 
     questions = []
@@ -191,6 +191,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
     for q_words in questions:
         question_vecs.append(sentence2vec(w2v_model, q_words, input_length))
     print("len(question_vecs)", len(question_vecs))
+    logging.info("== len(question_vecs): %d" % len(question_vecs))
 
 
     # 计算每个document的向量
@@ -209,7 +210,8 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
     for d_words in docs:
         doc_vecs.append(sentence2vec(w2v_model, d_words, output_length))
     print("len(doc_vecs)",len(doc_vecs))
-    logger.info("input_length:%d, output_length:%d" % (input_length, output_length))
+    logging.info("== len(doc_vecs): %d" % len(doc_vecs))
+    logger.info("=== input_length:%d, output_length:%d" % (input_length, output_length))
 
     # 计算每个doc出现的频率
     doc_count = {}
@@ -243,7 +245,7 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
     # 打乱训练数据
     # random.shuffle(qa_index)
-
+    logger.info("=== preparing training nn model data...")
     for i in qa_index:
         y = [1] + [0] * ns_amount
         y_data.append(y)
@@ -304,11 +306,11 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
 
     model.save(to_model_file)
     print("saved model to:", to_model_file)
-    logging.info("saved model to: %s" % to_model_file)
+    logging.info("=== saved model to: %s" % to_model_file)
 
     model.save_weights(to_ckpt_file)
     print("saved weights to: %s" % to_ckpt_file)
-    logging.info("saved weights to: %s" % to_ckpt_file)
+    logging.info("=== saved weights to: %s" % to_ckpt_file)
 
 
 
