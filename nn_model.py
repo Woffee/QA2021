@@ -247,6 +247,8 @@ def train(w2v_model, qa_file, doc_file, to_model_file, to_ckpt_file, args):
     # random.shuffle(qa_index)
     logger.info("=== preparing training nn model data...")
     for i in qa_index:
+        if i % 100 == 0:
+            logging.info("== preparing training nn model data, now: %d" % i)
         y = [1] + [0] * ns_amount
         y_data.append(y)
         # question
