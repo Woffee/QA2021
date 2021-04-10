@@ -348,6 +348,9 @@ def train_nn(questions, documents, args, train_num):
 
     y_data = np.array(y_data).reshape(len(questions), (1+ns_amount))
 
+    print("start training...")
+    logger.info("=== start training...")
+
     input_length = args.input_length
     output_length = args.output_length
 
@@ -360,9 +363,6 @@ def train_nn(questions, documents, args, train_num):
                              learning_rate=args.learning_rate,
                              drop_rate=args.drop_rate, )
     print(model.summary())
-
-    print("start training...")
-    logger.info("=== start training...")
 
     checkpoint = ModelCheckpoint("ckpt/best_model.hdf5", monitor='loss', verbose=1,
                                  save_best_only=True, mode='auto', period=10)
