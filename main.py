@@ -278,14 +278,21 @@ def preprocess_all_documents(questions, documents, w2v):
     print("=== t_min:%d, t_max:%d, w_min:%.4f" % (t_min, t_max, w_min))
     logging.info("=== t_min:%d, t_max:%d, w_min:%.4f" % (t_min, t_max, w_min))
 
+    max_length = 0
+    for doc in documents:
+        words = get_stemmed_words(doc.doc_text)
+        if words[-1] == '?':
+            words = words[:-1]
+        max_length = max(max_length, len(words))
+
     processed_ducuments = list()
     for doc in documents:
-        title_words = get_stemmed_words(doc.doc_text)
-        if title_words[-1] == '?':
-            title_words = title_words[:-1]
+        words = get_stemmed_words(doc.doc_text)
+        if words[-1] == '?':
+            words = words[:-1]
 
-        doc.words = title_words
-        doc.matrix = init_doc_matrix(doc.words, w2v, 1000)
+        doc.words = words
+        doc.matrix = init_doc_matrix(doc.words, w2v, max_length)
         if doc.id in doc_weight.keys():
             doc.weight = doc_weight[doc.id]
         else:
@@ -309,6 +316,11 @@ def train_nn(questions, documents, args, train_num):
     weight_data_r = []
     weight_data_w = []
     y_data = []
+
+    input_length = questions[0].matrix.shape[0]
+    output_length = documents[0].matrix.shape[0]
+    print("=== input_length: %d, output_length: %d" % (input_length, output_length) )
+    logger.info("=== input_length: %d, output_length: %d" % (input_length, output_length) )
 
     for q in questions:
         ii = int(q.id.split("-")[-1])
@@ -341,19 +353,15 @@ def train_nn(questions, documents, args, train_num):
             w_decoder.append(documents_dict[id].matrix)
             w_weight.append(documents_dict[id].weight)
 
-        w_decoder = np.array(w_decoder).reshape(args.output_length, args.input_dim, ns_amount)
+        w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
         w_weight = np.array(w_weight).reshape((1, ns_amount))
         w_decoder_input.append(w_decoder)
         weight_data_w.append(w_weight)
 
-    y_data = np.array(y_data).reshape(len(questions), (1+ns_amount))
-
     print("start training...")
     logger.info("=== start training...")
 
-    input_length = questions[0].matrix.shape[0]
-    output_length = args.output_length
-    logger.info("=== input_length: %d" % input_length)
+    y_data = np.array(y_data).reshape(len(questions), (1+ns_amount))
 
     model = negative_samples(input_length=input_length,
                              input_dim=args.input_dim,
