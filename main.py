@@ -351,8 +351,9 @@ def train_nn(questions, documents, args, train_num):
     print("start training...")
     logger.info("=== start training...")
 
-    input_length = args.input_length
+    input_length = questions[0].matrix.shape[0]
     output_length = args.output_length
+    logger.info("=== input_length: %d" % input_length)
 
     model = negative_samples(input_length=input_length,
                              input_dim=args.input_dim,
