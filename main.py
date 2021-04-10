@@ -324,17 +324,17 @@ def train_nn(questions, documents, args, train_num):
         # Create empty arrays to contain batch of features and labels#
 
         # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
-        q_encoder_input = []
-        r_decoder_input = []
-        w_decoder_input = []
-        weight_data_r = []
-        weight_data_w = []
-        y_data = []
 
         while True:
+            q_encoder_input = []
+            r_decoder_input = []
+            w_decoder_input = []
+            weight_data_r = []
+            weight_data_w = []
+            y_data = []
+
             for i in range(batch_size):
                 q = random.choice(questions_train)
-                print(q.id)
 
                 y = [1] + [0] * ns_amount
                 y_data.append(y)
@@ -371,6 +371,7 @@ def train_nn(questions, documents, args, train_num):
             w_decoder_input = np.array(w_decoder_input)
             weight_data_r = np.array(weight_data_r)
             weight_data_w = np.array(weight_data_w)
+            logging.info("=== one batch generated")
 
             yield [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w], y_data
 
