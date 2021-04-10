@@ -64,6 +64,7 @@ class Document:
         self.words = None # stemmed words in the doc_text
         self.matrix = None # embeddings of words
         self.weight = 0
+        self.count = 0 # number of occurrences in the data set
 
 
 def loss_c(similarity):
@@ -299,6 +300,8 @@ def preprocess_all_documents(questions, documents, w2v):
 
         doc.words = words
         doc.matrix = init_doc_matrix(doc.words, w2v, max_length)
+        if doc.id in doc_cnt.keys():
+            doc.count = doc_cnt[doc.id]
         if doc.id in doc_weight.keys():
             doc.weight = doc_weight[doc.id]
         else:
@@ -311,9 +314,15 @@ def train_nn(questions, documents, args, train_num):
     ns_amount = args.ns_amount
 
     documents_dict = {}
+
+    # 选取数据集里出现过的 documents，用作训练。因为大部分 API 几乎很少被用到。
+    documents_selected = []
+
     for doc in documents:
         doc_id = doc.id
         documents_dict[doc_id] = doc
+        if doc.count > 0:
+            documents_selected.append(doc)
 
 
 
@@ -355,10 +364,10 @@ def train_nn(questions, documents, args, train_num):
                 # 10个un-related答案
                 u_aids = []
                 for i in range(10):
-                    r = random.randint(1, len(documents) - 1)
-                    while (documents[r].id in q.answer_ids):
-                        r = random.randint(1, len(documents) - 1)
-                    u_aids.append(documents[r].id)
+                    r = random.randint(1, len(documents_selected) - 1)
+                    while (documents_selected[r].id in q.answer_ids):
+                        r = random.randint(1, len(documents_selected) - 1)
+                    u_aids.append(documents_selected[r].id)
 
                 w_decoder = []
                 w_weight = []
@@ -512,5 +521,13 @@ if __name__ == '__main__':
 
     questions = preprocess_all_questions(question_answers, w2v)
     documents = preprocess_all_documents(question_answers, documents, w2v)
+
+    # cnt_of_0 = 0
+    # for doc in documents:
+    #     if doc.count == 0:
+    #         print(doc.id)
+    #         cnt_of_0 += 1
+    # print("cnt_of_0: %d" % cnt_of_0)
+
 
     nn_model = train_nn(questions, documents, args, train_num)
