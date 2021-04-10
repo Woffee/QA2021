@@ -309,59 +309,74 @@ def train_nn(questions, documents, args, train_num):
         doc_id = doc.id
         documents_dict[doc_id] = doc
 
-    # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
-    q_encoder_input = []
-    r_decoder_input = []
-    w_decoder_input = []
-    weight_data_r = []
-    weight_data_w = []
-    y_data = []
+
 
     input_length = questions[0].matrix.shape[0]
     output_length = documents[0].matrix.shape[0]
     print("=== input_length: %d, output_length: %d" % (input_length, output_length) )
     logger.info("=== input_length: %d, output_length: %d" % (input_length, output_length) )
 
-    for q in questions:
-        ii = int(q.id.split("-")[-1])
-        if ii % 100 ==0:
-            print("== preparing training nn model data, now: %d" % ii)
-            logging.info("== preparing training nn model data, now: %d" % ii)
+    questions_train = questions[:train_num]
+    questions_test = questions[train_num:]
 
-        y = [1] + [0] * ns_amount
-        y_data.append(y)
+    batch_size = args.batch_size
+    def generator():
+        # Create empty arrays to contain batch of features and labels#
 
-        q_encoder_input.append(q.matrix)
+        # [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w]
+        q_encoder_input = []
+        r_decoder_input = []
+        w_decoder_input = []
+        weight_data_r = []
+        weight_data_w = []
+        y_data = []
 
+        while True:
+            for i in range(batch_size):
+                q = random.choice(questions_train)
+                print(q.id)
 
-        # 每个question一个正确答案
-        aid = q.answer_ids[0]
-        r_decoder_input.append(documents_dict[aid].matrix)
-        weight_data_r.append(documents_dict[aid].weight)
+                y = [1] + [0] * ns_amount
+                y_data.append(y)
 
-        # 10个un-related答案
-        u_aids = []
-        for i in range(10):
-            r = random.randint(1, len(documents)-1)
-            while( documents[r].id in q.answer_ids ):
-                r = random.randint(1, len(documents) - 1)
-            u_aids.append( documents[r].id )
+                q_encoder_input.append(q.matrix)
 
-        w_decoder = []
-        w_weight = []
-        for id in u_aids:
-            w_decoder.append(documents_dict[id].matrix)
-            w_weight.append(documents_dict[id].weight)
+                # 每个question一个正确答案
+                aid = q.answer_ids[0]
+                r_decoder_input.append(documents_dict[aid].matrix)
+                weight_data_r.append(documents_dict[aid].weight)
 
-        w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
-        w_weight = np.array(w_weight).reshape((1, ns_amount))
-        w_decoder_input.append(w_decoder)
-        weight_data_w.append(w_weight)
+                # 10个un-related答案
+                u_aids = []
+                for i in range(10):
+                    r = random.randint(1, len(documents) - 1)
+                    while (documents[r].id in q.answer_ids):
+                        r = random.randint(1, len(documents) - 1)
+                    u_aids.append(documents[r].id)
+
+                w_decoder = []
+                w_weight = []
+                for id in u_aids:
+                    w_decoder.append(documents_dict[id].matrix)
+                    w_weight.append(documents_dict[id].weight)
+
+                w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
+                w_weight = np.array(w_weight).reshape((1, ns_amount))
+                w_decoder_input.append(w_decoder)
+                weight_data_w.append(w_weight)
+
+            y_data = np.array(y_data).reshape(batch_size, (1 + ns_amount))
+            q_encoder_input = np.array(q_encoder_input)
+            r_decoder_input = np.array(r_decoder_input)
+            w_decoder_input = np.array(w_decoder_input)
+            weight_data_r = np.array(weight_data_r)
+            weight_data_w = np.array(weight_data_w)
+
+            yield [q_encoder_input, r_decoder_input, w_decoder_input, weight_data_r, weight_data_w], y_data
+
 
     print("start training...")
     logger.info("=== start training...")
-
-    y_data = np.array(y_data).reshape(len(questions), (1+ns_amount))
 
     model = negative_samples(input_length=input_length,
                              input_dim=args.input_dim,
@@ -376,18 +391,49 @@ def train_nn(questions, documents, args, train_num):
     checkpoint = ModelCheckpoint("ckpt/best_model.hdf5", monitor='loss', verbose=1,
                                  save_best_only=True, mode='auto', period=10)
 
-    model.fit([q_encoder_input[:train_num], r_decoder_input[:train_num], w_decoder_input[:train_num],
-               weight_data_r[:train_num], weight_data_w[:train_num]], y_data[:train_num],
-              batch_size=args.batch_size,
-              epochs=args.epochs,
-              verbose=1,
-              validation_data=([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:],
-                                weight_data_r[train_num:], weight_data_w[train_num:]], y_data[train_num:]),
-              callbacks=[checkpoint]
-              )
+    model.fit_generator(generator(), epochs=args.epochs, steps_per_epoch= train_num // batch_size, verbose=1, callbacks=[checkpoint])
 
-    res = model.evaluate([q_encoder_input[train_num:], r_decoder_input[train_num:], w_decoder_input[train_num:],
-                          weight_data_r[train_num:], weight_data_w[train_num:]], y_data[train_num:], verbose=1)
+    # for test
+    q_encoder_input = []
+    r_decoder_input = []
+    w_decoder_input = []
+    weight_data_r = []
+    weight_data_w = []
+    y_data = []
+    for q in questions_test:
+        y = [1] + [0] * ns_amount
+        y_data.append(y)
+
+        q_encoder_input.append(q.matrix)
+
+        # 每个question一个正确答案
+        aid = q.answer_ids[0]
+        r_decoder_input.append(documents_dict[aid].matrix)
+        weight_data_r.append(documents_dict[aid].weight)
+
+        # 10个un-related答案
+        u_aids = []
+        for i in range(10):
+            r = random.randint(1, len(documents) - 1)
+            while (documents[r].id in q.answer_ids):
+                r = random.randint(1, len(documents) - 1)
+            u_aids.append(documents[r].id)
+
+        w_decoder = []
+        w_weight = []
+        for id in u_aids:
+            w_decoder.append(documents_dict[id].matrix)
+            w_weight.append(documents_dict[id].weight)
+
+        w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
+        w_weight = np.array(w_weight).reshape((1, ns_amount))
+        w_decoder_input.append(w_decoder)
+        weight_data_w.append(w_weight)
+
+    y_data = np.array(y_data).reshape(len(questions_test), (1 + ns_amount))
+
+    res = model.evaluate([q_encoder_input, r_decoder_input, w_decoder_input,
+                          weight_data_r, weight_data_w], y_data, verbose=1)
     print("=== training over.")
     logger.info("training over")
     print(model.metrics_names)
