@@ -10,7 +10,7 @@ import keras.backend.tensorflow_backend as KTF
 from keras.optimizers import adam
 from keras.layers.recurrent import GRU
 from keras.layers.core import Lambda
-from keras.layers import Dot, add, Bidirectional, Dropout, Reshape, Concatenate, Dense, MaxPooling1D, Flatten
+from keras.layers import Dot, add, Bidirectional, Dropout, Reshape, Concatenate, Dense, MaxPooling1D, Flatten, Masking
 from keras.models import Input, Model
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint
@@ -106,14 +106,20 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     for i in range(ns_amount):
         w_decoder_input_list[i] = Reshape((output_length, output_dim))(w_decoder_input_list[i])
         weight_data_w_list[i] = Reshape((1,))(weight_data_w_list[i])
-        fixed_w_decoder_input.append(adding_weight(output_length, output_dim)([w_decoder_input_list[i], weight_data_w_list[i]]))
+
+        w_decoder_weighted = adding_weight(output_length, output_dim)([w_decoder_input_list[i], weight_data_w_list[i]])
+        w_decoder_weighted_masked = Masking(mask_value=0., input_shape=(output_length, output_dim))(w_decoder_weighted)
+        fixed_w_decoder_input.append(w_decoder_weighted_masked)
+
+    q_encoder_input_masked = Masking(mask_value=0., input_shape=(input_length, input_dim) )(q_encoder_input)
+    fixed_r_decoder_input_masked = Masking(mask_value=0., input_shape=(output_length, output_dim) )(fixed_r_decoder_input)
 
     encoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional1")
-    q_encoder_output = encoder(q_encoder_input)
+    q_encoder_output = encoder(q_encoder_input_masked)
     q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
 
     decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
-    r_decoder_output = decoder(fixed_r_decoder_input)
+    r_decoder_output = decoder(fixed_r_decoder_input_masked)
     r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
     # doc_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(q_encoder_input)
