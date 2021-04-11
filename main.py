@@ -322,6 +322,7 @@ def train_nn(questions, documents, args, train_num):
         doc_id = doc.id
         documents_dict[doc_id] = doc
         if doc.count > 0:
+            # print("%s : %d" % (doc.id, len(doc.words)))
             documents_selected.append(doc)
 
 
@@ -363,11 +364,18 @@ def train_nn(questions, documents, args, train_num):
 
                 # 10个un-related答案
                 u_aids = []
-                for i in range(10):
-                    r = random.randint(1, len(documents_selected) - 1)
-                    while (documents_selected[r].id in q.answer_ids):
+                if args.doc_mode == 0: # for all
+                    for i in range(ns_amount):
+                        r = random.randint(1, len(documents) - 1)
+                        while (documents[r].id in q.answer_ids):
+                            r = random.randint(1, len(documents) - 1)
+                        u_aids.append(documents[r].id)
+                else:
+                    for i in range(ns_amount): # for those appear on the SO
                         r = random.randint(1, len(documents_selected) - 1)
-                    u_aids.append(documents_selected[r].id)
+                        while (documents_selected[r].id in q.answer_ids):
+                            r = random.randint(1, len(documents_selected) - 1)
+                        u_aids.append(documents_selected[r].id)
 
                 w_decoder = []
                 w_weight = []
@@ -473,6 +481,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dim', help='output_dim', type=int, default=100)
     parser.add_argument('--hidden_dim', help='hidden_dim', type=int, default=64)
     parser.add_argument('--ns_amount', help='ns_amount', type=int, default=10)
+    parser.add_argument('--doc_mode', help='doc_mode', type=int, default=0) # 0:for all,  1:for those apprear on the SO
 
     parser.add_argument("--pool_s", default=20, type=int, help="")
     parser.add_argument("--pool_stride", default=5, type=int, help="")
