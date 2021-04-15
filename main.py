@@ -531,6 +531,31 @@ if __name__ == '__main__':
     questions = preprocess_all_questions(question_answers, w2v)
     documents = preprocess_all_documents(question_answers, documents, w2v)
 
+    # stackoverflow statistics
+    # print("files: %s" % args.qa_file)
+    # all_words = []
+    # que_length_total = 0
+    # doc_length_total = 0
+    # max_q_length = 0
+    # max_d_length = 0
+    # for q in questions:
+    #     que_length_total += len(q.words)
+    #     max_q_length = max(max_q_length, len(q.words))
+    #     all_words = all_words + q.words
+    # for d in documents:
+    #     doc_length_total += len(d.words)
+    #     max_d_length = max(max_d_length, len(d.words))
+    #     all_words = all_words + d.words
+    # all_words_unique = set(all_words)
+    # print("total words: %d" % len(all_words))
+    # print("total unique words: %d" % len(all_words_unique))
+    # print("number of questions: %d" % len(questions))
+    # print("max length of questions: %d" % max_q_length)
+    # print("average length of questions: %.2f" % (1.0*que_length_total/len(questions)))
+    # print("number of documents: %d" % len(documents))
+    # print("max length of documents: %d" % max_d_length)
+    # print("average length of documents: %.2f" % (1.0*doc_length_total / len(documents)))
+
     # cnt_of_0 = 0
     # for doc in documents:
     #     if doc.count == 0:
