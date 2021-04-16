@@ -825,7 +825,7 @@ if __name__ == '__main__':
     # print("cnt_of_0: %d" % cnt_of_0)
 
 
-    # nn_model = train_nn(questions, documents, args, train_num)
+    nn_model = train_nn(questions, documents, args, train_num)
 
 
 
