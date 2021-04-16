@@ -130,7 +130,7 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
 
     output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
     output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
-    similarity = Dense(1, name="similarity")(output_hid)
+    similarity = Dense(1, name="similarity", activation="softmax")(output_hid)
 
     # Difference between kernel, bias, and activity regulizers in Keras
     # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
@@ -838,4 +838,7 @@ if __name__ == '__main__':
         print("saved to %s" % to_file_qrel)
 
     test_nn(questions, documents, args, train_num, "ckpt/best_model_epoch10_negative10.hdf5", to_file_nn_pred_all)
+
+    if not os.path.exists(to_file_nn_pred):
+        get_nn_pred_top50(to_file_nn_pred_all, to_file_nn_pred)
 
