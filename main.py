@@ -153,6 +153,41 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     model.compile(optimizer=ada, loss=lambda y_true, y_pred: loss_data)
     return model
 
+def no_negative_samples(input_length, input_dim, output_length, output_dim, hidden_dim, ns_amount, learning_rate, drop_rate):
+    q_encoder_input = Input(shape=(input_length, input_dim))
+    r_decoder_input = Input(shape=(output_length, output_dim))
+    weight_data_r = Input(shape=(1,))
+
+    fixed_r_decoder_input = adding_weight(output_length, output_dim)([r_decoder_input, weight_data_r])
+
+    q_encoder_input_masked = Masking(mask_value=0., input_shape=(input_length, input_dim))(q_encoder_input)
+    fixed_r_decoder_input_masked = Masking(mask_value=0., input_shape=(output_length, output_dim))(
+        fixed_r_decoder_input)
+
+
+    encoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional1")
+    q_encoder_output = encoder(q_encoder_input_masked)
+    q_encoder_output = Dropout(rate=drop_rate, name="dropout1")(q_encoder_output)
+
+    decoder = Bidirectional(GRU(hidden_dim), merge_mode="ave", name="bidirectional2")
+    r_decoder_output = decoder(fixed_r_decoder_input_masked)
+    r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
+
+    output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
+    output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
+    similarity = Dense(1, name="similarity")(output_hid)
+
+    # Difference between kernel, bias, and activity regulizers in Keras
+    # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
+    # output = Dense(128, kernel_regularizer=keras.regularizers.l2(0.0001))(output_vec) # activation="relu",
+    # output = Dense(64, name="output_hid", kernel_regularizer=keras.regularizers.l2(0.0001))(output) # activation="relu",
+    # similarity = Dense(1, name="similarity", activation="softmax")(output)
+
+    model = Model([q_encoder_input, r_decoder_input, weight_data_r], similarity)
+    ada = adam(lr=learning_rate)
+    model.compile(optimizer=ada, loss='categorical_crossentropy', metrics=[keras.metrics.categorical_accuracy])
+    return model
+
 
 def read_questions(qa_file):
     question_answers = []
@@ -473,6 +508,229 @@ def train_nn(questions, documents, args, train_num):
     logging.info("=== saved weights to: %s" % args.weight_path)
 
 
+# top 50
+def test_nn(questions, documents, args, train_num, model_path, to_pred_file):
+    logger.info("=== preprocessing...")
+    ns_amount = args.ns_amount
+
+    documents_dict = {}
+
+    # 选取数据集里出现过的 documents，用作训练。因为大部分 API 几乎很少被用到。
+    documents_selected = []
+
+    for doc in documents:
+        doc_id = doc.id
+        documents_dict[doc_id] = doc
+        if doc.count > 0:
+            # print("%s : %d" % (doc.id, len(doc.words)))
+            documents_selected.append(doc)
+
+    input_length = questions[0].matrix.shape[0]
+    output_length = documents[0].matrix.shape[0]
+    print("=== input_length: %d, output_length: %d" % (input_length, output_length))
+    logger.info("=== input_length: %d, output_length: %d" % (input_length, output_length))
+
+
+    questions_test = questions[train_num:]
+
+
+    model = negative_samples(input_length=input_length,
+                             input_dim=args.input_dim,
+                             output_length=output_length,
+                             output_dim=args.output_dim,
+                             hidden_dim=args.hidden_dim,
+                             ns_amount=ns_amount,
+                             learning_rate=args.learning_rate,
+                             drop_rate=args.drop_rate, )
+    model.load_weights(model_path)
+
+    # 这个 model 只做预测
+    new_nn_model = no_negative_samples(input_length=input_length,
+                                       input_dim=args.input_dim,
+                                       output_length=output_length,
+                                       output_dim=args.output_dim,
+                                       hidden_dim=args.hidden_dim,
+                                       ns_amount=ns_amount,
+                                       learning_rate=args.learning_rate,
+                                       drop_rate=args.drop_rate)
+
+    # print(new_nn_model.summary())
+    for i in range(len(model.layers)):
+        weights = model.layers[i].get_weights()
+        new_nn_model.layers[i].set_weights(weights)
+
+
+    # for test
+    for q in questions_test:
+        print("now: %s" % q.id)
+        q_encoder_input = []
+        r_decoder_input = []
+        weight_data_r = []
+
+        for doc in documents_selected:
+            q_encoder_input.append(q.matrix)
+            r_decoder_input.append(doc.matrix)
+            weight_data_r.append(doc.weight)
+
+        res = new_nn_model.predict([q_encoder_input, r_decoder_input, weight_data_r])
+
+
+        with open(to_pred_file, "a") as fw:
+            for i, row in enumerate(res):
+                api = documents_selected[i].id
+                score = row[0]
+                fw.write("%s\tQ0\t%s\t%d\t%.8f\t%s\n" % (q.id, api, i + 1, score, "indri"))
+        print("saved to", to_pred_file)
+
+def generate_ltr_training_data(questions, documents, args, train_num, to_file_path):
+    logger.info("=== extract_features...")
+    ns_amount = args.ns_amount
+
+    documents_dict = {}
+
+    # 选取数据集里出现过的 documents，用作训练。因为大部分 API 几乎很少被用到。
+    documents_selected = []
+
+    for doc in documents:
+        doc_id = doc.id
+        documents_dict[doc_id] = doc
+        if doc.count > 0:
+            # print("%s : %d" % (doc.id, len(doc.words)))
+            documents_selected.append(doc)
+
+    input_length = questions[0].matrix.shape[0]
+    output_length = documents[0].matrix.shape[0]
+    print("=== input_length: %d, output_length: %d" % (input_length, output_length))
+    logger.info("=== input_length: %d, output_length: %d" % (input_length, output_length))
+
+
+    model = negative_samples(input_length=input_length,
+                             input_dim=args.input_dim,
+                             output_length=output_length,
+                             output_dim=args.output_dim,
+                             hidden_dim=args.hidden_dim,
+                             ns_amount=ns_amount,
+                             learning_rate=args.learning_rate,
+                             drop_rate=args.drop_rate)
+    model.load_weights(args.weight_path)
+
+    # 这个 model 只做预测
+    new_nn_model = no_negative_samples(input_length=input_length,
+                                       input_dim=args.input_dim,
+                                       output_length=output_length,
+                                       output_dim=args.output_dim,
+                                       hidden_dim=args.hidden_dim,
+                                       ns_amount=ns_amount,
+                                       learning_rate=args.learning_rate,
+                                       drop_rate=args.drop_rate)
+
+    # print(new_nn_model.summary())
+    for i in range(len(model.layers)):
+        weights = model.layers[i].get_weights()
+        new_nn_model.layers[i].set_weights(weights)
+        # print("layer %d: " % i, weights)
+
+    # 这个 model 用于提取 QA representations
+    qa_vec_model = Model(inputs=new_nn_model.input, outputs=new_nn_model.get_layer('output_hid').output)
+
+    step = 0
+    while step * 200 <= train_num:
+        q_encoder_input = []
+        r_decoder_input = []
+        weight_data_r = []
+        y_data = []
+
+        qid_list = []
+        label_list = []
+        aid_list = []
+        logger.info("step: %d" % step)
+
+        end = min(train_num, (step + 1) * 200)
+        for ss in range(step * 200, end):
+            question = questions[ss]
+            logger.info("now: %s" % question.id  )
+            qid_list.append(question.id)
+            label_list.append(1)
+
+            y = 1
+            y_data.append(y)
+
+            q_encoder_input.append(question.matrix)
+
+            # 每个question一个正确答案
+            aid = question.answer_ids[0]
+            aid_list.append(aid)
+            r_decoder_input.append(documents_dict[aid].matrix)
+            weight_data_r.append(documents_dict[aid].weight)
+
+            # 10个un-related答案
+            u_aids = []
+            for i in range(10):
+                r = random.randint(1, len(documents) - 1)
+                while (documents[r].id in q.answer_ids):
+                    r = random.randint(1, len(documents) - 1)
+                u_aids.append(documents[r].id)
+
+            for u_aid in u_aids:
+                qid_list.append(question.id)
+                label_list.append(0)
+                aid_list.append(u_aid)
+
+                doc = documents_dict[u_aid]
+
+                # 这些答案都是unrelated
+                y = 0
+                y_data.append(y)
+
+                q_encoder_input.append(question.matrix)
+                r_decoder_input.append(doc.matrix)
+                weight_data_r.append(doc.weight)
+
+        logger.info("predicting...")
+        res = qa_vec_model.predict([q_encoder_input, r_decoder_input, weight_data_r])
+
+        with open(to_file_path, "a") as f:
+            for i in range(len(res)):
+                row = res[i]
+                feature_str = ''
+                for j in range(len(row)):
+                    feature_str = feature_str + (" %d:%.9f" % (j + 1, row[j]))
+                label = label_list[i]
+                id = qid_list[i]
+                doc_id = aid_list[i]
+
+                line = "%d qid:%d%s # doc-%d \n" % (label, id, feature_str, doc_id)
+                f.write(line)
+        print("saved to:", to_file_path)
+        logger.info("step:%d added" % step)
+        step += 1
+    logger.info("saved to: %s" % to_file_path)
+
+def get_nn_pred_top50(to_file_nn_pred_all, to_file_nn_pred, k=50):
+    all_data = {}
+    print("read: %s" % to_file_nn_pred_all)
+    with open(to_file_nn_pred_all, "r") as f:
+        for line in f:
+            l = line.strip()
+            if l!="":
+                qid, Q0, api, rank, score, indri = l.split("\t")
+                score = float(score)
+                if qid in all_data.keys():
+                    if api not in all_data[qid]:
+                        all_data[qid].append([api, score])
+                else:
+                    all_data[qid] = [ [api, score] ]
+    with open(to_file_nn_pred, "w") as fw:
+        for qid in all_data.keys():
+            rank_list = all_data[qid]
+            rank_list = sorted(rank_list, key=lambda item: item[1], reverse=True)
+            ii = 1
+            for api, score in rank_list[:k]:
+                fw.write("%s\tQ0\t%s\t%d\t%.8f\t%s\n" % (qid, api, ii, score, "indri"))
+                ii += 1
+        print("saved to %s" % to_file_nn_pred)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test for argparse')
     parser.add_argument('--data_type', help='data_type', type=str, default='stackoverflow3')
@@ -516,6 +774,9 @@ if __name__ == '__main__':
     logger.info("running model.py, data_type: %s" % data_type)
 
     w2v_path = "models/w2v_%s.bin" % data_type
+
+    to_file_nn_pred_all = "data/nn_%s_pred_all.txt" % data_type
+    to_file_nn_pred = "data/nn_%s_pred_top50.txt" % data_type
 
     to_file_pred = "data/QA2021_%s_pred.txt" % data_type
     to_file_qrel = "data/QA2021_%s_qrel.txt" % data_type
@@ -564,4 +825,17 @@ if __name__ == '__main__':
     # print("cnt_of_0: %d" % cnt_of_0)
 
 
-    nn_model = train_nn(questions, documents, args, train_num)
+    # nn_model = train_nn(questions, documents, args, train_num)
+
+
+
+    # Evaluation:
+    if not os.path.exists(to_file_qrel):
+        with open(to_file_qrel, "w") as fw:
+            for q in questions[train_num:]:
+                for doc_id in set(q.answer_ids):
+                    fw.write("%s 0 %s 1\n" % (q.id, doc_id))
+        print("saved to %s" % to_file_qrel)
+
+    test_nn(questions, documents, args, train_num, "ckpt/best_model_epoch10_negative10.hdf5", to_file_nn_pred_all)
+
