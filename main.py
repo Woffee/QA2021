@@ -128,9 +128,9 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     # que_output = MaxPooling1D(pool_size=20, stride=5, padding='same')(fixed_r_decoder_input)
     # que_output = Flatten()(fixed_r_decoder_input)
 
-    output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
-    output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
-    similarity = Dense(1, name="similarity", activation="softmax")(output_hid)
+    # output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
+    # output_hid = Dense(hidden_dim, name="output_hid", activation="relu")(output_vec)
+    # similarity = Dense(1, name="similarity", activation="softmax")(output_hid)
 
     # Difference between kernel, bias, and activity regulizers in Keras
     # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
@@ -143,8 +143,8 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
         w_decoder_output = decoder(fixed_w_decoder_input[i])
         w_decoder_output = Dropout(rate=drop_rate)(w_decoder_output)
         w_decoder_output_list.append(w_decoder_output)
-    similarities = [ similarity ]
-    # similarities = [Dot(axes=1, normalize=True)([q_encoder_output, r_decoder_output])]
+    # similarities = [ similarity ]
+    similarities = [Dot(axes=1, normalize=True)([q_encoder_output, r_decoder_output])]
     for i in range(ns_amount):
         similarities.append(Dot(axes=1, normalize=True)([q_encoder_output, w_decoder_output_list[i]]))
     loss_data = Lambda(lambda x: loss_c(x))(similarities)
@@ -173,9 +173,11 @@ def no_negative_samples(input_length, input_dim, output_length, output_dim, hidd
     r_decoder_output = decoder(fixed_r_decoder_input_masked)
     r_decoder_output = Dropout(rate=drop_rate, name="dropout2")(r_decoder_output)
 
-    output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
-    output_hid = Dense(hidden_dim, name="output_hid")(output_vec)
-    similarity = Dense(1, name="similarity")(output_hid)
+    # output_vec = Concatenate(axis=1, name="dropout_con")([q_encoder_output, r_decoder_output])
+    # output_hid = Dense(hidden_dim, name="output_hid", activation="relu")(output_vec)
+    # similarity = Dense(1, name="similarity", activation="softmax")(output_hid)
+
+    similarity  = Dot(axes=1, normalize=True)([q_encoder_output, r_decoder_output])
 
     # Difference between kernel, bias, and activity regulizers in Keras
     # https://stats.stackexchange.com/questions/383310/difference-between-kernel-bias-and-activity-regulizers-in-keras
@@ -733,7 +735,6 @@ def get_nn_pred_top50(to_file_nn_pred_all, to_file_nn_pred, k=50):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test for argparse')
-    parser.add_argument('--data_type', help='data_type', type=str, default='stackoverflow3')
 
     parser.add_argument('--input_dim', help='input_dim', type=int, default=100)
     parser.add_argument('--output_dim', help='output_dim', type=int, default=100)
@@ -750,10 +751,12 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', help='batch_size', type=int, default=32)
     parser.add_argument('--epochs', help='epochs', type=int, default=100)
 
-    parser.add_argument('--qa_file', help='qa_file', type=str, default='stackoverflow3/QA_list.txt')
-    parser.add_argument('--doc_file', help='doc_file', type=str, default='stackoverflow3/Doc_list.txt')
-    parser.add_argument('--model_path', help='model_path', type=str, default='models/nn_model_QA2021_stackoverflow3.bin')
-    parser.add_argument('--weight_path', help='weight_path', type=str, default='ckpt/nn_weights_QA2021_stackoverflow3.h5')
+    parser.add_argument('--data_type', help='data_type', type=str, default='stackoverflow4')
+    parser.add_argument('--qa_file', help='qa_file', type=str, default='stackoverflow4/QA_list.txt')
+    parser.add_argument('--doc_file', help='doc_file', type=str, default='stackoverflow4/Doc_list.txt')
+
+    parser.add_argument('--model_path', help='model_path', type=str, default='models/nn_model_QA2021_stackoverflow4.bin')
+    parser.add_argument('--weight_path', help='weight_path', type=str, default='ckpt/nn_weights_QA2021_stackoverflow4.h5')
 
     parser.add_argument('--log_file', help='log_file', type=str, default='')
 
@@ -837,8 +840,8 @@ if __name__ == '__main__':
                     fw.write("%s 0 %s 1\n" % (q.id, doc_id))
         print("saved to %s" % to_file_qrel)
 
-    test_nn(questions, documents, args, train_num, "ckpt/best_model_epoch10_negative10.hdf5", to_file_nn_pred_all)
-
-    if not os.path.exists(to_file_nn_pred):
-        get_nn_pred_top50(to_file_nn_pred_all, to_file_nn_pred)
+    # test_nn(questions, documents, args, train_num, "ckpt/best_model_epoch10_negative10.hdf5", to_file_nn_pred_all)
+    #
+    # if not os.path.exists(to_file_nn_pred):
+    #     get_nn_pred_top50(to_file_nn_pred_all, to_file_nn_pred)
 
