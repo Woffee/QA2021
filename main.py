@@ -25,7 +25,6 @@ import logging
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 now_time = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
 
-from word2vec import remove_punc
 import nltk
 from nltk.tokenize import word_tokenize
 from gensim.models.keyedvectors import KeyedVectors

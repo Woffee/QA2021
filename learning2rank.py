@@ -32,7 +32,7 @@ from main import Question, Document, loss_c, negative_samples, no_negative_sampl
 logger = None
 random.seed(2021)
 
-def generate_ltr_data(questions, documents, args, to_file, ltr_ns_mount=1):
+def generate_ltr_data(questions, documents, args, to_file, ltr_train_ns_mount=1, candidates_file=''):
     logger.info("=== extract_features...")
     ns_amount = args.ns_amount
 
@@ -111,7 +111,7 @@ def generate_ltr_data(questions, documents, args, to_file, ltr_ns_mount=1):
                     did_list.append(doc.id)
                     y_list.append(1)
 
-                for i in range(ltr_ns_mount):
+                for i in range(ltr_train_ns_mount):
                     r = random.randint(1, len(documents_for_train) - 1)
                     while (documents_for_train[r].id in q.answer_ids):
                         r = random.randint(1, len(documents_for_train) - 1)
@@ -148,6 +148,17 @@ def generate_ltr_data(questions, documents, args, to_file, ltr_ns_mount=1):
                     f.write(line)
             print("saved to: %s" % to_file)
     else: # vali or eval
+        candidates = {}
+        if candidates_file != '' and os.path.exists(candidates_file):
+            with open(candidates_file, "r") as f:
+                for line in f:
+                    l = line.strip()
+                    if l != "":
+                        arr = l.split(" ")
+                        qid = arr[0]
+                        dids = arr[1:]
+                        candidates[qid] = dids
+
         batch = 100  # 一次运行数量，防止内存不够
         steps = math.ceil(len(questions) / batch)
         for step in range(steps):
@@ -168,21 +179,26 @@ def generate_ltr_data(questions, documents, args, to_file, ltr_ns_mount=1):
                 q = questions[ii]
                 print("now: %d, qid:%s" % (ii, q.id))
 
-                for doc in documents_for_train:
-                    if doc.id in q.answer_ids:
-                        y_data.append(1)
-                        y_list.append(1)
-                    else:
-                        y_data.append(0)
-                        y_list.append(0)
+                if q.id in candidates.keys():
+                    candidate_apis = candidates[q.id]
+                else:
+                    candidate_apis = documents
 
-
+                for did in candidate_apis:
+                    doc = documents_dict[did]
                     q_encoder_input.append(q.matrix)
                     r_decoder_input.append(doc.matrix)
                     weight_data_r.append(doc.weight)
 
                     qid_list.append(q.id)
                     did_list.append(doc.id)
+
+                    if did in q.answer_ids:
+                        y_data.append(1)
+                        y_list.append(1)
+                    else:
+                        y_data.append(0)
+                        y_list.append(0)
 
             # features = extractor([q_encoder_input, r_decoder_input, weight_data_r])
             features = extractor.predict([q_encoder_input, r_decoder_input, weight_data_r])
@@ -234,6 +250,15 @@ if __name__ == '__main__':
     parser.add_argument('--doc_file', help='doc_file', type=str, default='stackoverflow4/Doc_list.txt')
     parser.add_argument('--log_file', help='log_file', type=str, default=default_log_file)
 
+    parser.add_argument('--candidates_file', help='log_file', type=str, default='data/QA2021_stackoverflow4_candidates.txt')
+
+    parser.add_argument('--ltr_train_file', help='ltr_train_file', type=str, default="for_ltr/ltr_train.txt")
+    parser.add_argument('--ltr_vali_file', help='ltr_vali_file', type=str, default="for_ltr/ltr_vali.txt")
+    parser.add_argument('--ltr_eval_file', help='ltr_eval_file', type=str, default="for_ltr/ltr_eval.txt")
+
+    parser.add_argument('--ltr_qrel_file', help='ltr_qrel_file', type=str, default="data/QA2021_qrel.txt")
+    parser.add_argument('--ltr_pred_file', help='ltr_pred_file', type=str, default="data/QA2021_ltr_pred.txt")
+
     parser.add_argument('--weight_path', help='weight_path', type=str, default='ckpt/best_model_qa6_epo40_neg2_bat32_back.hdf5')
 
     args = parser.parse_args()
@@ -246,11 +271,12 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
     logger.info("training parameters %s", args)
 
-    qa_version = "qa6"
-    ltr_train_file = "for_ltr/ltr_%s_%s_train.txt" % (args.data_type, qa_version)
-    ltr_vali_file = "for_ltr/ltr_%s_%s_vali.txt" % (args.data_type, qa_version)
-    ltr_eval_file = "for_ltr/ltr_%s_%s_eval.txt" % (args.data_type, qa_version)
-    to_file = "data/pyltr_%s_%s_pred.txt" % (args.data_type, qa_version)
+    ltr_train_file = args.ltr_train_file
+    ltr_vali_file = args.ltr_vali_file
+    ltr_eval_file = args.ltr_eval_file
+
+    to_pred_file = args.ltr_pred_file
+    to_file_qrel = args.ltr_qrel_file
 
     if not os.path.exists(ltr_train_file):
         question_answers = read_questions(args.qa_file)
@@ -268,11 +294,10 @@ if __name__ == '__main__':
         documents = preprocess_all_documents(question_answers, documents, w2v)
 
         generate_ltr_data(questions[:train_num], documents, args, ltr_train_file, 10)
-        generate_ltr_data(questions[train_num: train_num+vali_num], documents, args, ltr_vali_file, 2)
-        generate_ltr_data(questions[train_num+vali_num:], documents, args, ltr_eval_file, 2)
+        generate_ltr_data(questions[train_num: train_num+vali_num], documents, args, ltr_vali_file, -1, args.candidates_file)
+        generate_ltr_data(questions[train_num+vali_num:], documents, args, ltr_eval_file, -1, args.candidates_file)
 
         # Evaluation:
-        to_file_qrel = "data/QA2021_%s_qrel.txt" % args.data_type
         if not os.path.exists(to_file_qrel):
             with open(to_file_qrel, "w") as fw:
                 for q in questions[train_num+vali_num:]:
@@ -280,57 +305,6 @@ if __name__ == '__main__':
                         fw.write("%s 0 %s 1\n" % (q.id, doc_id))
             print("saved to %s" % to_file_qrel)
 
-
-    # parser.add_argument('--data_type', help='data_type', type=str, default='twitter')
-    # parser.add_argument('--model_type', help='model_type', type=str, default='lambdaMART')
-    # parser.add_argument('--ranklib_path', help="ranklib_path", type=str, default='')
-    #
-    # parser.add_argument('--train_file', help="train_file", type=str, default='')
-    # parser.add_argument('--test_file', help="test_file", type=str, default='')
-    #
-    #
-    # parser.add_argument('--train', action='store_true', help="train learning2rank model")
-    # parser.add_argument('--pred', action='store_true', help="do predict")
-    #
-    # args = parser.parse_args()
-    #
-    # print(args)
-    #
-    # data_type = args.data_type
-    # print("data_type:", data_type)
-    #
-    # # ranklib_path = '/Users/woffee/www/gis_technical_support/gis_qa/ltrdemo2wenbo/utils/bin/RankLib.jar'
-    #
-    # # /Users/woffee/www/gis_qa/ltrdemo2wenbo/evaluation.py
-    # # trec_eval_path= '/Users/woffee/www/trec_eval-9.0.7/trec_eval'
-    #
-    # m_dict = {
-    #     'RankNet': 1,
-    #     'lambdaMART': 6
-    # }
-    #
-    # train_metric = 'MAP'
-    # train_model = args.model_type
-    #
-    # data_train_path = args.train_file
-    # data_test_path = args.test_file
-    #
-    # save_model_path = BASE_DIR + '/ltr/models/' + data_type + "_" + train_model + '_' + train_metric + ".txt"
-    # data_pred_path = BASE_DIR + '/ltr/predicts/' + data_type + "_" + train_model + '_' + train_metric + "_pred.txt"
-    #
-    # # train
-    # ranker = m_dict[train_model]
-    # train_cmd = "java -jar %s -train %s -ranker %d -tvs 0.8 -metric2t MAP -save %s" % (args.ranklib_path, data_train_path, ranker, save_model_path)
-    #
-    # # pred
-    # pred_cmd = "java -jar %s -rank %s -load %s -indri %s" % (args.ranklib_path, data_test_path, save_model_path, data_pred_path)
-    #
-    # if args.train:
-    #     print(train_cmd)
-    #     os.system(train_cmd)
-    # if args.pred:
-    #     print(pred_cmd)
-    #     os.system(pred_cmd)
 
     print("training learning2rank...")
     logger.info("training learning2rank...")
@@ -376,7 +350,7 @@ if __name__ == '__main__':
             res_data[qid] = [ [pred, did] ]
 
 
-    with open(to_file, "w") as fw:
+    with open(to_pred_file, "w") as fw:
         for qid in res_data.keys():
             rank_list = res_data[qid]
             rank_list = sorted(rank_list, key=lambda item: item[0], reverse=True)
@@ -388,7 +362,7 @@ if __name__ == '__main__':
                     visited.append(api)
                     fw.write("%s\tQ0\t%s\t%d\t%.8f\t%s\n" % (qid, api, ii, score, "indri"))
                     ii += 1
-    print("save to: %s" % to_file)
+    print("save to: %s" % to_pred_file)
     print('NDCG, Random ranking:', metric.calc_mean_random(Eqids, Ey))
     print('NDCG, Our model:', metric.calc_mean(Eqids, Ey, Epred))
     print("done")
