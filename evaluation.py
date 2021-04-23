@@ -83,10 +83,10 @@ def calc_auc(qrel_file, pred_file):
                 continue
 
             arr = line.split("\t")
-            qid = arr[0]
-            did = arr[2]
-            rank = int(arr[3])
-            score = float(arr[4])
+            qid = arr[0].strip()
+            did = arr[2].strip()
+            rank = int(arr[3].strip())
+            score = float(arr[4].strip())
             if qid in q_pred.keys():
                 q_pred[qid].append([did, score])
             else:
@@ -166,8 +166,8 @@ def calc_auc(qrel_file, pred_file):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--qrel', default='/Users/woffee/www/emse-apiqa/reviewer_baselines/word2api/data/word2api_stackoverflow3_qrel.txt')
-    parser.add_argument('--run', default='/Users/woffee/www/emse-apiqa/reviewer_baselines/word2api/data/word2api_stackoverflow3_pred.txt')
+    parser.add_argument('--qrel', default='/Users/woffee/www/emse-apiqa/QA2021/data/QA2021_stackoverflow4_qrel.txt')
+    parser.add_argument('--run', default='/Users/woffee/www/emse-apiqa/QA2021/data/pyltr_pred.txt')
 
     args = parser.parse_args()
 
