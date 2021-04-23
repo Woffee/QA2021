@@ -809,6 +809,7 @@ if __name__ == '__main__':
     # for d in documents:
     #     doc_length_total += len(d.words)
     #     max_d_length = max(max_d_length, len(d.words))
+    #     print("%s\t%d" % (d.id, len(d.words)))
     #     all_words = all_words + d.words
     # all_words_unique = set(all_words)
     # print("total words: %d" % len(all_words))
@@ -819,13 +820,14 @@ if __name__ == '__main__':
     # print("number of documents: %d" % len(documents))
     # print("max length of documents: %d" % max_d_length)
     # print("average length of documents: %.2f" % (1.0*doc_length_total / len(documents)))
-
+    #
     # cnt_of_0 = 0
     # for doc in documents:
     #     if doc.count == 0:
-    #         print(doc.id)
+    #         # print(doc.id)
     #         cnt_of_0 += 1
     # print("cnt_of_0: %d" % cnt_of_0)
+    # exit()
 
 
     nn_model = train_nn(questions, documents, args, train_num)
