@@ -11,3 +11,9 @@ tmp/
 twitter/
 adwords/
 ebay/
+.ipynb_checkpoints/
+*.ipynb
+data/
+remove_pred_dup.py
+stackoverflow3/
+stackoverflow4/
