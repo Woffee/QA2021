@@ -501,9 +501,9 @@ def train_nn(questions, documents, args, train_num):
     print(res)
     print(model.summary())
 
-    model.save(args.model_path)
-    print("saved model to:", args.model_path)
-    logging.info("=== saved model to: %s" % args.model_path)
+    # model.save(args.model_path)
+    # print("saved model to:", args.model_path)
+    # logging.info("=== saved model to: %s" % args.model_path)
 
     model.save_weights(args.weight_path)
     print("saved weights to: %s" % args.weight_path)
@@ -755,7 +755,6 @@ if __name__ == '__main__':
     parser.add_argument('--qa_file', help='qa_file', type=str, default='stackoverflow4/QA_list.txt')
     parser.add_argument('--doc_file', help='doc_file', type=str, default='stackoverflow4/Doc_list.txt')
 
-    parser.add_argument('--model_path', help='model_path', type=str, default='models/nn_model_QA2021_stackoverflow4.bin')
     parser.add_argument('--weight_path', help='weight_path', type=str, default='ckpt/nn_weights_QA2021_stackoverflow4.h5')
 
     parser.add_argument('--log_file', help='log_file', type=str, default='')
@@ -795,6 +794,8 @@ if __name__ == '__main__':
     questions = preprocess_all_questions(question_answers, w2v)
     documents = preprocess_all_documents(question_answers, documents, w2v)
 
+    nn_model = train_nn(questions, documents, args, train_num)
+
     # stackoverflow statistics
     # print("files: %s" % args.qa_file)
     # all_words = []
@@ -827,23 +828,3 @@ if __name__ == '__main__':
     #         # print(doc.id)
     #         cnt_of_0 += 1
     # print("cnt_of_0: %d" % cnt_of_0)
-    # exit()
-
-
-    nn_model = train_nn(questions, documents, args, train_num)
-
-
-
-    # Evaluation:
-    if not os.path.exists(to_file_qrel):
-        with open(to_file_qrel, "w") as fw:
-            for q in questions[train_num:]:
-                for doc_id in set(q.answer_ids):
-                    fw.write("%s 0 %s 1\n" % (q.id, doc_id))
-        print("saved to %s" % to_file_qrel)
-
-    # test_nn(questions, documents, args, train_num, "ckpt/best_model_epoch10_negative10.hdf5", to_file_nn_pred_all)
-    #
-    # if not os.path.exists(to_file_nn_pred):
-    #     get_nn_pred_top50(to_file_nn_pred_all, to_file_nn_pred)
-
