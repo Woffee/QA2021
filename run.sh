@@ -20,7 +20,7 @@ batch_size=32
 epochs=200
 output_length=1000
 
-args="--data_type ${data_type} --qa_file ${qa_file} --doc_file ${doc_file} --model_path ${model_path} --weight_path ${weight_path} --input_dim ${input_dim} --output_dim ${output_dim} --hidden_dim ${hidden_dim} --ns_amount ${ns_amount} --learning_rate ${learning_rate} --drop_rate ${drop_rate} --batch_size ${batch_size} --epochs ${epochs} --output_length ${output_length} --log_file ${log_file} --doc_mode 1"
+args="--data_type ${data_type} --qa_file ${qa_file} --doc_file ${doc_file} --weight_path ${weight_path} --input_dim ${input_dim} --output_dim ${output_dim} --hidden_dim ${hidden_dim} --ns_amount ${ns_amount} --learning_rate ${learning_rate} --drop_rate ${drop_rate} --batch_size ${batch_size} --epochs ${epochs} --output_length ${output_length} --log_file ${log_file} --doc_mode 1"
 echo $args
 
 # == args for learning to rank ==
