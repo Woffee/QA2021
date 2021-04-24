@@ -4,8 +4,8 @@ log_file="${now_time}.log"
 data_type="stackoverflow4"
 test_num="v4"
 
-qa_file="/Users/woffee/www/emse-apiqa/our_code/stackoverflow4/QA_list.txt"
-doc_file="/Users/woffee/www/emse-apiqa/our_code/stackoverflow4/Doc_list.txt"
+qa_file="stackoverflow4/QA_list.txt"
+doc_file="stackoverflow4/Doc_list.txt"
 
 weight_path="models/nn_weights_${data_type}_${test_num}.h5"
 
