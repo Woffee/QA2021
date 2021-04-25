@@ -1,5 +1,5 @@
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
-ARG PYTHON_VERSION=3.6
+ARG PYTHON_VERSION=3.7
 RUN apt-get update && apt-get install -y --no-install-recommends \
          build-essential \
          cmake \
@@ -19,4 +19,4 @@ ENV PATH /opt/conda/bin:$PATH
 
 Add . /src
 
-RUN pip install pandas gensim sklearn cvxpy matplotlib tensorflow==1.13.1 keras==2.2.4 nltk
+RUN pip install pandas gensim==3.8.3 sklearn cvxpy matplotlib tensorflow==1.13.1 keras==2.2.4 nltk==3.4.5 h5py==2.10.0 pytrec_eval pyltr

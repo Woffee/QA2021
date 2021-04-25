@@ -150,6 +150,8 @@ def generate_ltr_data(questions, documents, args, to_file, ltr_train_ns_mount=1,
     else: # vali or eval
         candidates = {}
         if candidates_file != '' and os.path.exists(candidates_file):
+            print("===loading candidates...")
+            logger.info("===loading candidates...")
             with open(candidates_file, "r") as f:
                 for line in f:
                     l = line.strip()
@@ -181,24 +183,40 @@ def generate_ltr_data(questions, documents, args, to_file, ltr_train_ns_mount=1,
 
                 if q.id in candidates.keys():
                     candidate_apis = candidates[q.id]
+                    for did in candidate_apis:
+                        doc = documents_dict[did]
+                        q_encoder_input.append(q.matrix)
+                        r_decoder_input.append(doc.matrix)
+                        weight_data_r.append(doc.weight)
+
+                        qid_list.append(q.id)
+                        did_list.append(doc.id)
+
+                        if did in q.answer_ids:
+                            y_data.append(1)
+                            y_list.append(1)
+                        else:
+                            y_data.append(0)
+                            y_list.append(0)
                 else:
-                    candidate_apis = documents
+                    print("=== generate test ltr data from all documents")
+                    logger.info("=== generate test ltr data from all documents")
+                    for doc in documents:
+                        q_encoder_input.append(q.matrix)
+                        r_decoder_input.append(doc.matrix)
+                        weight_data_r.append(doc.weight)
 
-                for did in candidate_apis:
-                    doc = documents_dict[did]
-                    q_encoder_input.append(q.matrix)
-                    r_decoder_input.append(doc.matrix)
-                    weight_data_r.append(doc.weight)
+                        qid_list.append(q.id)
+                        did_list.append(doc.id)
 
-                    qid_list.append(q.id)
-                    did_list.append(doc.id)
+                        if doc.id in q.answer_ids:
+                            y_data.append(1)
+                            y_list.append(1)
+                        else:
+                            y_data.append(0)
+                            y_list.append(0)
 
-                    if did in q.answer_ids:
-                        y_data.append(1)
-                        y_list.append(1)
-                    else:
-                        y_data.append(0)
-                        y_list.append(0)
+
 
             # features = extractor([q_encoder_input, r_decoder_input, weight_data_r])
             features = extractor.predict([q_encoder_input, r_decoder_input, weight_data_r])
