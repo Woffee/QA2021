@@ -7,7 +7,8 @@ test_num="v4"
 qa_file="stackoverflow4/QA_list.txt"
 doc_file="stackoverflow4/Doc_list.txt"
 
-weight_path="models/nn_weights_${data_type}_${test_num}.h5"
+#weight_path="models/nn_weights_${data_type}_${test_num}.h5"
+weight_path="ckpt/best_model.hdf5"
 
 # == args for main model ==
 input_dim=300
