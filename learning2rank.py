@@ -297,7 +297,7 @@ if __name__ == '__main__':
     to_pred_file = args.ltr_pred_file
     to_file_qrel = args.ltr_qrel_file
 
-    if not os.path.exists(ltr_train_file):
+    if not os.path.exists(ltr_train_file) or not os.path.exists(ltr_vali_file) or not  os.path.exists(ltr_eval_file):
         question_answers = read_questions(args.qa_file)
         documents = read_docs(args.doc_file)
 
@@ -312,9 +312,12 @@ if __name__ == '__main__':
         questions = preprocess_all_questions(question_answers, w2v)
         documents = preprocess_all_documents(question_answers, documents, w2v)
 
-        generate_ltr_data(questions[:train_num], documents, args, ltr_train_file, 10)
-        generate_ltr_data(questions[train_num: train_num+vali_num], documents, args, ltr_vali_file, -1, args.candidates_file)
-        generate_ltr_data(questions[train_num+vali_num:], documents, args, ltr_eval_file, -1, args.candidates_file)
+        if not os.path.exists(ltr_train_file):
+            generate_ltr_data(questions[:train_num], documents, args, ltr_train_file, 10)
+        if not os.path.exists(ltr_vali_file):
+            generate_ltr_data(questions[train_num: train_num+vali_num], documents, args, ltr_vali_file, -1, args.candidates_file)
+        if not os.path.exists(ltr_eval_file):
+            generate_ltr_data(questions[train_num+vali_num:], documents, args, ltr_eval_file, -1, args.candidates_file)
 
         # Evaluation:
         if not os.path.exists(to_file_qrel):
