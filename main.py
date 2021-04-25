@@ -458,59 +458,59 @@ def train_nn(questions, documents, args, train_num):
     model.fit_generator(generator(), epochs=args.epochs, steps_per_epoch= train_num // batch_size, verbose=1, callbacks=[checkpoint])
 
     # for test
-    q_encoder_input = []
-    r_decoder_input = []
-    w_decoder_input = []
-    weight_data_r = []
-    weight_data_w = []
-    y_data = []
-    for q in questions_test:
-        y = [1] + [0] * ns_amount
-        y_data.append(y)
-
-        q_encoder_input.append(q.matrix)
-
-        # 每个question一个正确答案
-        aid = q.answer_ids[0]
-        r_decoder_input.append(documents_dict[aid].matrix)
-        weight_data_r.append(documents_dict[aid].weight)
-
-        # 10个un-related答案
-        u_aids = []
-        for i in range(10):
-            r = random.randint(1, len(documents) - 1)
-            while (documents[r].id in q.answer_ids):
-                r = random.randint(1, len(documents) - 1)
-            u_aids.append(documents[r].id)
-
-        w_decoder = []
-        w_weight = []
-        for id in u_aids:
-            w_decoder.append(documents_dict[id].matrix)
-            w_weight.append(documents_dict[id].weight)
-
-        w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
-        w_weight = np.array(w_weight).reshape((1, ns_amount))
-        w_decoder_input.append(w_decoder)
-        weight_data_w.append(w_weight)
-
-    y_data = np.array(y_data).reshape(len(questions_test), (1 + ns_amount))
-
-    res = model.evaluate([q_encoder_input, r_decoder_input, w_decoder_input,
-                          weight_data_r, weight_data_w], y_data, verbose=1)
-    print("=== training over.")
-    logger.info("training over")
-    print(model.metrics_names)
-    print(res)
-    print(model.summary())
-
-    # model.save(args.model_path)
-    # print("saved model to:", args.model_path)
-    # logging.info("=== saved model to: %s" % args.model_path)
-
-    model.save_weights(args.weight_path)
-    print("saved weights to: %s" % args.weight_path)
-    logging.info("=== saved weights to: %s" % args.weight_path)
+    # q_encoder_input = []
+    # r_decoder_input = []
+    # w_decoder_input = []
+    # weight_data_r = []
+    # weight_data_w = []
+    # y_data = []
+    # for q in questions_test:
+    #     y = [1] + [0] * ns_amount
+    #     y_data.append(y)
+    #
+    #     q_encoder_input.append(q.matrix)
+    #
+    #     # 每个question一个正确答案
+    #     aid = q.answer_ids[0]
+    #     r_decoder_input.append(documents_dict[aid].matrix)
+    #     weight_data_r.append(documents_dict[aid].weight)
+    #
+    #     # 10个un-related答案
+    #     u_aids = []
+    #     for i in range(10):
+    #         r = random.randint(1, len(documents) - 1)
+    #         while (documents[r].id in q.answer_ids):
+    #             r = random.randint(1, len(documents) - 1)
+    #         u_aids.append(documents[r].id)
+    #
+    #     w_decoder = []
+    #     w_weight = []
+    #     for id in u_aids:
+    #         w_decoder.append(documents_dict[id].matrix)
+    #         w_weight.append(documents_dict[id].weight)
+    #
+    #     w_decoder = np.array(w_decoder).reshape(output_length, args.input_dim, ns_amount)
+    #     w_weight = np.array(w_weight).reshape((1, ns_amount))
+    #     w_decoder_input.append(w_decoder)
+    #     weight_data_w.append(w_weight)
+    #
+    # y_data = np.array(y_data).reshape(len(questions_test), (1 + ns_amount))
+    #
+    # res = model.evaluate([q_encoder_input, r_decoder_input, w_decoder_input,
+    #                       weight_data_r, weight_data_w], y_data, verbose=1)
+    # print("=== training over.")
+    # logger.info("training over")
+    # print(model.metrics_names)
+    # print(res)
+    # print(model.summary())
+    #
+    # # model.save(args.model_path)
+    # # print("saved model to:", args.model_path)
+    # # logging.info("=== saved model to: %s" % args.model_path)
+    #
+    # model.save_weights(args.weight_path)
+    # print("saved weights to: %s" % args.weight_path)
+    # logging.info("=== saved weights to: %s" % args.weight_path)
 
 
 # top 50
