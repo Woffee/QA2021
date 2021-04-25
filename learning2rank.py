@@ -260,6 +260,7 @@ if __name__ == '__main__':
     parser.add_argument('--ltr_pred_file', help='ltr_pred_file', type=str, default="data/QA2021_ltr_pred.txt")
 
     parser.add_argument('--weight_path', help='weight_path', type=str, default='ckpt/best_model_qa6_epo40_neg2_bat32_back.hdf5')
+    parser.add_argument('--output_length', help='output_length', type=int, default=1000)
 
     args = parser.parse_args()
     print(args)
