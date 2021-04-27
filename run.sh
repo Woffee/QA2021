@@ -11,14 +11,14 @@ doc_file="stackoverflow4/Doc_list.txt"
 weight_path="ckpt/best_model.hdf5"
 
 # == args for main model ==
-input_dim=300
-output_dim=300
+input_dim=100
+output_dim=100
 hidden_dim=64
 ns_amount=10
 learning_rate=0.001
 drop_rate=0.2
 batch_size=32
-epochs=200
+epochs=40
 output_length=1000
 
 args="--data_type ${data_type} --qa_file ${qa_file} --doc_file ${doc_file} --weight_path ${weight_path} --input_dim ${input_dim} --output_dim ${output_dim} --hidden_dim ${hidden_dim} --ns_amount ${ns_amount} --learning_rate ${learning_rate} --drop_rate ${drop_rate} --batch_size ${batch_size} --epochs ${epochs} --output_length ${output_length} --log_file ${log_file} --doc_mode 1"

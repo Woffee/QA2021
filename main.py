@@ -67,10 +67,15 @@ class Document:
 
 
 def loss_c(similarity):
-    ns_num = len(similarity) - 1
+    if isinstance(similarity, list):
+        ns_num = len(similarity) - 1
+    else:
+        return 1 - similarity
+
     if ns_num < 1:
-        print("There needs to have at least one negative sample!")
-        exit()
+        # print("There needs to have at least one negative sample!")
+        # exit()
+        return 1 - similarity[0]
     else:
         loss_amount = K.exp(-1 * add([similarity[0], -1*similarity[1]]))
         for i in range(ns_num - 1):
@@ -98,10 +103,16 @@ def negative_samples(input_length, input_dim, output_length, output_dim, hidden_
     r_decoder_input = Input(shape=(output_length, output_dim))
     weight_data_r = Input(shape=(1,))
     weight_data_w = Input(shape=(1, ns_amount))
-    weight_data_w_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=2))(weight_data_w)
+    if ns_amount == 0:
+        weight_data_w_list = []
+    else:
+        weight_data_w_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=2))(weight_data_w)
     fixed_r_decoder_input = adding_weight(output_length, output_dim)([r_decoder_input, weight_data_r])
     w_decoder_input = Input(shape=(output_length, output_dim, ns_amount))
-    w_decoder_input_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=3))(w_decoder_input)
+    if ns_amount == 0:
+        w_decoder_input_list = []
+    else:
+        w_decoder_input_list = Lambda(lambda x: tf.split(x, num_or_size_splits=ns_amount, axis=3))(w_decoder_input)
     if ns_amount == 1:
         # print("===w_decoder_input_list:", w_decoder_input_list.shape)
         w_decoder_input_list = [w_decoder_input_list]
@@ -594,7 +605,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_dim', help='input_dim', type=int, default=100)
     parser.add_argument('--output_dim', help='output_dim', type=int, default=100)
     parser.add_argument('--hidden_dim', help='hidden_dim', type=int, default=64)
-    parser.add_argument('--ns_amount', help='ns_amount', type=int, default=10)
+    parser.add_argument('--ns_amount', help='ns_amount', type=int, default=0)
     parser.add_argument('--doc_mode', help='doc_mode', type=int, default=0) # 0:for all,  1:for those apprear on the SO
 
     parser.add_argument("--pool_s", default=20, type=int, help="")
