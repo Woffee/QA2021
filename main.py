@@ -598,6 +598,10 @@ def test_nn(questions, documents, args, train_num, model_path, to_pred_file):
                 fw.write("%s\tQ0\t%s\t%d\t%.8f\t%s\n" % (q.id, api, i + 1, score, "indri"))
         print("saved to", to_pred_file)
 
+def seconds2str(seconds):
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    return "%02d:%02d:%02d" % (h, m, s)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test for argparse')
@@ -660,7 +664,10 @@ if __name__ == '__main__':
     questions = preprocess_all_questions(question_answers, w2v)
     documents = preprocess_all_documents(question_answers, documents, w2v)
 
+    starttime = time.time()
     nn_model = train_nn(questions, documents, args, train_num)
+    endtime = time.time()
+    logger.info("=== training nn_model done, time: %s" % seconds2str(endtime - starttime))
 
     # stackoverflow statistics
     # print("files: %s" % args.qa_file)

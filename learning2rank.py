@@ -27,7 +27,7 @@ from keras import backend as K
 from keras.callbacks import ModelCheckpoint
 from adding_weight import adding_weight
 
-from main import Question, Document, loss_c, negative_samples, no_negative_samples, read_questions, read_docs, get_stemmed_words, init_doc_matrix, preprocess_all_questions, preprocess_all_documents, train_w2v
+from main import Question, Document, loss_c, negative_samples, no_negative_samples, read_questions, read_docs, get_stemmed_words, init_doc_matrix, preprocess_all_questions, preprocess_all_documents, train_w2v, seconds2str
 
 logger = None
 random.seed(2021)
@@ -330,6 +330,7 @@ if __name__ == '__main__':
 
     print("training learning2rank...")
     logger.info("training learning2rank...")
+    starttime = time.time()
     with open(ltr_train_file) as trainfile, \
             open(ltr_vali_file) as valifile, \
             open(ltr_eval_file) as evalfile:
@@ -355,6 +356,8 @@ if __name__ == '__main__':
     )
 
     model.fit(TX, Ty, Tqids, monitor=monitor)
+    endtime = time.time()
+    logger.info("=== training learning2rank done, time: %s" % seconds2str(endtime - starttime))
 
     Epred = model.predict(EX)
 
